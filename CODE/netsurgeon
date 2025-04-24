@@ -1,0 +1,108 @@
+#!/bin/bash
+
+usage() {
+cat << EOF
+	NetSurgeon:
+		NetSurgeon program for prioritizing interventions (TF deletions, and over-expressions) 
+		to move the transcriptional state toward the goal state. 
+
+	Usage:
+		netsurgeon [options] -n regulatoryNetworkMatrixFile -d startGoalStateDEVectorFile -f regulatorGeneNamesFile -t targetGeneNamesFile
+
+	Options:
+		-o	Output directory. The default output directory is the working directory. 
+		-e	Prioritize regulator over-expression interventions.
+					By default, NetSurgeon prioritizes regulator deletion interventions. 
+   
+EOF
+}
+
+checkFileParam(){
+  if [ -z $2 ]
+  then
+    echo "Option: -${1} is not defined!"
+    usage
+    exit 1
+  fi
+
+  if [ ! -f $2 ]
+  then
+    echo "The argument of option -${1} cannot be found: ${2}"
+    usage
+    exit 1
+  fi
+}
+
+checkDirectoryParam(){
+  if [ -z $2 ]
+  then
+    echo "Option: -${1} is not defined!"
+    usage
+    exit 1
+  fi
+
+  if [ ! -d $2 ]
+  then
+    mkdir $2
+  fi
+}
+
+overexpressionFlag=0
+regulatorGeneNamesFile=
+targetGeneNamesFile=
+regulatoryNetworkMatrixFile=
+startGoalStateDEVectorFile=
+outputDirectory=${PWD}
+currentDirectory=${PWD}
+
+while getopts “:heo::f:t:n:d:” OPTION
+do
+	case $OPTION in
+		h)
+			usage
+			exit 0
+			;;
+		o)
+			outputDirectory=$OPTARG
+			checkDirectoryParam ${OPTION} ${OPTARG}
+			;;
+		e)
+			overexpressionFlag=1
+			;;
+		f)
+			regulatorGeneNamesFile=$OPTARG
+			checkFileParam ${OPTION} ${OPTARG}
+			;;
+		t)
+			targetGeneNamesFile=$OPTARG
+			checkFileParam ${OPTION} ${OPTARG}
+			;;
+    n)
+      regulatoryNetworkMatrixFile=$OPTARG
+      checkFileParam ${OPTION} ${OPTARG}
+      ;;
+    d)
+      startGoalStateDEVectorFile=$OPTARG
+      checkFileParam ${OPTION} ${OPTARG}
+      ;;
+    ?)
+      usage
+      exit
+      ;;
+  esac
+done
+
+if [[ -z $regulatoryNetworkMatrixFile ]] || [[ -z $startGoalStateDEVectorFile ]] || [[ -z $regulatorGeneNamesFile ]] || [[ -z $targetGeneNamesFile ]]
+then
+  echo "ERROR: You must specify arguments for options: -n -d -f -t"
+  usage
+  exit 1
+fi
+
+cd ${NETSURGEON_DIR}
+
+## Run NetSurgeon
+R --no-save --slave --no-init-file --args ${regulatoryNetworkMatrixFile} ${startGoalStateDEVectorFile} ${regulatorGeneNamesFile} ${targetGeneNamesFile} ${outputDirectory} ${overexpressionFlag} < run_netsurgeon.r
+
+cd ${currentDirectory}
+

@@ -1,0 +1,76 @@
+NETSURGEON
+------------------------------------------------------
+
+NetSurgeon is a novel algorithm that utilizes genome-wide gene regulatory networks to identify interventions that force a cell toward a desired expression state. NetSurgeon uses a mechanistic network linking TFs to their direct targets by performing simple tests to measure the enrichment of each TF’s target genes for genes whose expression level differs between the initial cell state and the desired state. It has no inherent bias toward TFs with a large number of targets. Instead, it prefers interventions on TFs most of whose targets are predicted to move in the desired direction upon deletion or overexpression of the TF. Because it considers the predicted direction of change, NetSurgeon has no bias toward activators over repressors or over-expression over knockdown. 
+
+NetSurgeon has two required inputs: 1. a genome-wide map of the network of direct, functional regulation, and 2. a vector containing signed -log differential expression significances (e.g. q-values) for all genes between starting and goal transcriptional states. With these inputs, NetSurgeon searches though all possible interventions (TF deletions, and over-expressions) to identify those that are likely to move the transcriptional state toward the goal state.
+
+NetSurgeon assigns a score to each possible intervention, representing its confidence that the intervention will yield a substantial shift toward the goal state.  The score is loosely based on a hypergeometric enrichment test, where the universe is the set of all genes. The “positives” are the genes that are significantly differently expressed between the initial state and the goal state, optionally intersected with a set of genes involved in a process of interest (e.g. carbon metabolism). In the hypergeometric enrichment calculation, the “draws” are the target genes of the TF on which the intervention acts, as specified by the input network map. The successes are the positives drawn – i.e. the targets of the TF that are also differentially expressed between initial and goal states. In order to count as a success, a gene must not only be a target of the TF, it must also be predicted to move in the direction of the goal state as a result of the intervention (Fig. 1D). Deletion of a TF is predicted to increase the expression of targets it represses and decrease expression of targets it activates. Conversely, overexpression of a TF is predicted to have the opposite effects on its targets. The NetSurgeon score differs from a standard hypergeometric test in that different genes among the positives have different weights. This weighting does not change the total number of positives, but it allocates that number unequally among the DE genes. Thus, the number of successes is not just the number of targets that are DE and predicted to move in the right direction, it is the sum of the weights of those genes. 
+
+
+
+SYSTEM REQUIREMENTS
+------------------------------------------------------
+ 
+* R (tested on version 2.14.1)
+
+
+
+INSTALLATION INSTRUCTIONS
+------------------------------------------------------
+1. Unpack NetSurgeon
+  tar -zxvf netsurgeon_VERSION.tar.gz
+2. Execute the following lines or add them to your shell configuration file
+  export NETSURGEON_DIR=$HOME/<netsurgeon_location>/CODE/
+  export PATH=${NETSURGEON_DIR}:$PATH
+
+
+
+DESCRIPTION OF MAJOR FILES
+------------------------------------------------------
+
+Required Input Files:
+	
+1. regulatoryNetworkMatrixFile - A space separated adjacency matrix of size # of regulator genes x # of target genes. Each entry Mij of matrix M represents the confidence of an interaction between regulator Ri and target gene Tj. In this matrix, interactions with higher absolute value scores should be trusted more than interactions with lower absolute value scores. Interactions with large negative scores indicate more confidence in a repressing interaction between a regulator and a target gene. Specified with -n argument.
+	
+2. startGoalStateDEVectorFile - A newline separated vector of size # of target genes with each entry containing a signed -log differential expression significance (e.g. q-value) for a gene between starting and goal transcriptional states. Specified with -d argument.
+
+3. regulatorGeneNamesFile - A file listing one regulator gene identifier per line. The regulator gene identifiers should be ordered as they are in regulatory network matrix. Specified with -f argument.
+
+4. targetGeneNamesFile - A file listing one target gene identifier per line. The target gene identifiers should be ordered as they are in regulatory network matrix. Specified with -t argument.
+
+Output Files:
+1. intervention_scores.txt - A file of ranked regulator interventions that are predicted to force a cell toward the desired goal state. 
+
+
+
+EXAMPLE USAGE
+------------------------------------------------------
+
+* Transcription factor (TF) deletion prioritizations for a starting state of WT cells growing on synthetic complete medium with glucose (Kemmeren, et al. 2014) to 245 TF deletion goal states. See figure 2B of the NetSurgeon paper (Michael and Maier, et al.) 
+	netsurgeon -n ${NETSURGEON_DIR}/../DATA/SC_GLUCOSE_DELETIONS/network.mtr -d ${NETSURGEON_DIR}/../DATA/SC_GLUCOSE_DELETIONS/de.vect -f ${NETSURGEON_DIR}/../DATA/SC_GLUCOSE_DELETIONS/tf.orfs -t ${NETSURGEON_DIR}/../DATA/SC_GLUCOSE_DELETIONS/orfs
+
+* Transcription factor (TF) overexpression prioritizations for a starting state of WT cells growing on SC+Gal (Chua, et al. 2006) to 63 TF overexpression goal states. See figure 2C of the NetSurgeon paper (Michael and Maier, et al.)
+	netsurgeon -e -n ${NETSURGEON_DIR}/../DATA/SC_GALACTOSE_OVEREXPRESSIONS/network.mtr -d ${NETSURGEON_DIR}/../DATA/SC_GALACTOSE_OVEREXPRESSIONS/de.vect -f ${NETSURGEON_DIR}/../DATA/SC_GALACTOSE_OVEREXPRESSIONS/tf.orfs -t ${NETSURGEON_DIR}/../DATA/SC_GALACTOSE_OVEREXPRESSIONS/orfs
+
+
+
+CALCULATING THE DIFFERENTIAL EXPRESSION COMPONENT
+------------------------------------------------------
+  
+* Microarray & RNA-seq expression profiling data:
+    
+* For given starting and goal transcriptional states we recommend that you use LIMMA (Ritchie et al. 2015) to calculate the q-value (false discovery rate) that each gene is differentially expressed between the two states. Afterward, the -log of the differential expression vector is computed, and the vector is signed based on the log2-fold change of each gene between the starting and goal state.
+
+
+
+REFERENCES
+------------------------------------------------------
+
+Michael DG*, Maier EJ*, Brown H, Gish SG, Fiore C, Borwn RH, Brent MR. "Model-based Transcriptome Engineering Promotes a Fermentative Transcriptional State in Yeast" Manuscript under review.
+
+Ritchie ME, Phipson B, Wu D, Hu Y, Law CW, Shi W, Smyth GK. "Limma powers differential expression analyses for RNA-sequencing and microarray studies." Nucleic acids research (2015): gkv007.
+
+Kemmeren, Patrick, et al. "Large-scale genetic perturbations reveal regulatory networks and an abundance of gene-specific repressors." Cell (Elsevier) 157, no. 3 (2014): 740-752.
+
+Chua, Gordon, et al. "Identifying transcription factor functions and targets by phenotypic activation." Proceedings of the National Academy of Sciences (National Acad Sciences) 103, no. 32 (2006): 12045-12050.
